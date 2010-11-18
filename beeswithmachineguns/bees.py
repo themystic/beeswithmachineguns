@@ -187,6 +187,7 @@ def upload(localfile, remotefile):
             username = username,
             key_filename = _get_pem_path(key_name))
         sftp = client.open_sftp()
+        print "Uploading", localfile, "to", remotefile, "on bee", i
         sftp.put(localfile, remotefile)
 
 def _attack(params):

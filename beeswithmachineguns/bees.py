@@ -35,6 +35,8 @@ import urllib2
 import boto
 import paramiko
 
+from Crypto import Random
+
 EC2_INSTANCE_TYPE = 't1.micro'
 STATE_FILENAME = "bees.instances" # os.path.expanduser('~/.bees')
 
@@ -198,6 +200,8 @@ def _attack(params):
     """
     print 'Bee %i is joining the swarm.' % params['i']
 
+    Random.atfork()
+    
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -354,7 +358,9 @@ def attack(url, n, c):
 
 def _execute(params):
     print 'Bee %i is joining the swarm.' % params['i']
-
+    
+    Random.atfork()
+    
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())

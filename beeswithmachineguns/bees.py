@@ -178,7 +178,8 @@ def _get_instances():
 def upload(localfile, remotefile):
     username, key_name, instance_ids = _read_server_list()
     instances = _get_instances()
-    for inst in instances:
+    for i, inst in enumerate(instances):
+        localfile = localfile.format(i)
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(

@@ -36,7 +36,7 @@ import boto
 import paramiko
 
 EC2_INSTANCE_TYPE = 't1.micro'
-STATE_FILENAME = os.path.expanduser('~/.bees')
+STATE_FILENAME = "bees.instances" # os.path.expanduser('~/.bees')
 
 # Utilities
 
@@ -50,7 +50,7 @@ def _read_server_list():
         username = f.readline().strip()
         key_name = f.readline().strip()
         text = f.read()
-        instance_ids = text.split('\n')
+        instance_ids = text.strip().split('\n')
 
         print 'Read %i bees from the roster.' % len(instance_ids)
 
@@ -99,7 +99,7 @@ def up(count, group, zone, image_id, username, key_name):
         min_count=count,
         max_count=count,
         key_name=key_name,
-        security_groups=[group],
+        security_groups=group.split(','),
         instance_type=EC2_INSTANCE_TYPE,
         placement=zone)
 
@@ -161,6 +161,32 @@ def down():
     print 'Stood down %i bees.' % len(terminated_instance_ids)
 
     _delete_server_list()
+
+def _get_instances():
+    username, key_name, instance_ids = _read_server_list()
+    if not instance_ids:
+        return None
+
+    ec2_connection = boto.connect_ec2()
+    reservations = ec2_connection.get_all_instances(instance_ids=instance_ids)
+    instances = []
+    for reservation in reservations:
+        instances.extend(reservation.instances)
+
+    return instances
+
+def upload(localfile, remotefile):
+    username, key_name, instance_ids = _read_server_list()
+    instances = _get_instances()
+    for inst in instances:
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            inst.public_dns_name,
+            username = username,
+            key_filename = _get_pem_path(key_name))
+        sftp = client.open_sftp()
+        sftp.put(localfile, remotefile)
 
 def _attack(params):
     """
@@ -323,3 +349,64 @@ def attack(url, n, c):
     _print_results(results)
 
     print 'The swarm is awaiting new orders.'
+
+def _execute(params):
+    print 'Bee %i is joining the swarm.' % params['i']
+
+    try:
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            params['instance_name'],
+            username = params['username'],
+            key_filename = _get_pem_path(params['key_name']))
+
+        print 'Bee %i is firing his machine gun. Bang bang!' % params['i']
+
+        stdin, stdout, stderr = client.exec_command(params['command'])
+
+        response = {}
+
+        outres = stdout.read()
+        errres = stderr.read()
+
+        print 'Bee %i is out of ammo.' % params['i']
+
+        client.close()
+
+        return outres, errres
+    except socket.error, e:
+        return e
+
+
+def execute(command):
+    username, key_name, instance_ids = _read_server_list()
+
+    instances = _get_instances()
+    if not instances:
+        return
+
+    instance_count = len(instances)
+
+    params = []
+
+    for i, instance in enumerate(instances):
+        params.append({
+            'i': i,
+            'instance_id': instance.id,
+            'instance_name': instance.public_dns_name,
+            'username': username,
+            'key_name': key_name,
+            'command': command,
+        })
+
+    print 'Organizing the swarm.'
+
+    # Spin up processes for connecting to EC2 instances
+    pool = Pool(len(params))
+    results = pool.map(_execute, params)
+
+    import pprint
+    pprint.pprint(results)
+
+    print 'Offensive complete.'

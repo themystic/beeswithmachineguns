@@ -46,6 +46,7 @@ commands:
   attack  Begin the attack on a specific url.
   down    Shutdown and deactivate the load testing servers.
   report  Report the status of the load testing servers.
+  upload  Upload a file to all servers.
     """)
 
     up_group = OptionGroup(parser, "up", 
@@ -115,7 +116,10 @@ commands:
         bees.down()
     elif command == "report":
         bees.report()
-
+    elif command == "upload":
+        bees.upload(args[1], args[2])
+    elif command == "execute":
+        bees.execute(" ".join(args[1:]))
 
 def main():
     parse_options()

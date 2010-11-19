@@ -37,7 +37,8 @@ import paramiko
 
 from Crypto import Random
 
-EC2_INSTANCE_TYPE = 't1.micro'
+# EC2_INSTANCE_TYPE = 't1.micro'
+EC2_INSTANCE_TYPE = "m1.small"
 STATE_FILENAME = "bees.instances" # os.path.expanduser('~/.bees')
 
 # Utilities
@@ -382,7 +383,7 @@ def _execute(params):
 
         client.close()
 
-        return outres, errres
+        return (outres, errres)
     except socket.error, e:
         return e
 
